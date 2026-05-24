@@ -1,0 +1,13 @@
+numpy>=1.21.0,<2.0.0
+pandas>=1.3.0,<2.2.0
+scipy>=1.7.0
+
+# Machine Learning
+scikit-learn>=1.0.0,<1.5.0
+catboost>=1.2.0
+
+# Model Serialization
+joblib>=1.1.0
+
+# GUI (built-in with Python, no pip install needed)
+# tkinter — included in standard library
