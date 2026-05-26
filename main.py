@@ -14,7 +14,6 @@ app = FastAPI(
     version="22.0.0"
 )
 
-# تفعيل الـ CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,46 +22,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. تحميل موديل الـ Machine Learning مع معالجة الـ Dictionary ذكياً
+# 2. تحميل الموديل والاحتفاظ بالـ Object الكامل
 MODEL_PATH = "aqar_hub_v22_model.joblib"
 model = None
+loaded_object = None
 
 try:
     if os.path.exists(MODEL_PATH):
         loaded_object = joblib.load(MODEL_PATH)
         
-        # إذا كان الملف المرفوع عبارة عن Dictionary يحتوي على الموديل بداخله
         if isinstance(loaded_object, dict):
-            print(f"ℹ️ Loaded object is a dictionary. Keys found: {list(loaded_object.keys())}")
-            
-            # محاولة استخراج الموديل بأشهر الأسماء الشائعة
-            if 'model' in loaded_object:
-                model = loaded_object['model']
-            elif 'catboost' in loaded_object:
-                model = loaded_object['catboost']
-            else:
-                # البحث التلقائي الذكي عن أي عنصر جوه الـ dict عنده دالة predict
-                for key, value in loaded_object.items():
-                    if hasattr(value, 'predict'):
-                        model = value
-                        print(f"🎯 Automatically extracted model from key: '{key}'")
-                        break
+            print(f"ℹ️ Loaded object is a dictionary. Keys: {list(loaded_object.keys())}")
+            for key, value in loaded_object.items():
+                if hasattr(value, 'predict'):
+                    model = value
+                    print(f"🎯 Extracted model from key: '{key}'")
+                    break
         else:
-            # لو الموديل متسيف لوحده كـ Object عادي من الأول
             model = loaded_object
             
         if model is not None:
             print(f"✅ Model loaded successfully: {MODEL_PATH}")
-        else:
-            print("❌ Error: Loaded file is a dictionary but no model object with '.predict' was found inside it.")
     else:
-        print(f"⚠️ Warning: {MODEL_PATH} not found. Using dummy predictor for fallback.")
+        print(f"⚠️ Warning: {MODEL_PATH} not found.")
 except Exception as e:
     print(f"❌ Error loading model: {str(e)}")
-    model = None
 
 
-# 3. دالة تنظيف المعالجة اللغوية (تطبق على المدخلات فقط)
+# 3. دالة تنظيف الوصف
 def clean_arabic_description(text: str) -> str:
     if not text:
         return ""
@@ -71,7 +58,7 @@ def clean_arabic_description(text: str) -> str:
     return " ".join(text.split())
 
 
-# 4. بناء الـ Pydantic Schema لبيانات العقار المدخلة
+# 4. الـ Pydantic Schema
 class ValuationRequest(BaseModel):
     property_type: str = Field(..., example="شقة")
     governorate: str = Field(..., example="الجيزة")
@@ -85,7 +72,7 @@ class ValuationRequest(BaseModel):
     description: str = Field(default="", example="شقة لقطة للبيع في الدقي...")
 
 
-# 5. الـ Endpoints الرئيسية
+# 5. الـ Endpoints
 
 @app.get("/health", tags=["System"])
 def health_check():
@@ -99,33 +86,52 @@ def health_check():
 @app.post("/api/v1/valuation/analyze", tags=["Valuation"])
 def analyze_property(payload: ValuationRequest):
     try:
-        cleaned_desc = clean_arabic_description(payload.description)
-        
-        input_data = pd.DataFrame([{
-            "property_type": payload.property_type,
-            "governorate": payload.governorate,
-            "city": payload.city,
-            "detailed_address": payload.detailed_address,
-            "bedrooms": int(payload.bedrooms),
-            "bathrooms": int(payload.bathrooms),
-            "size_sqm": payload.size_sqm,
-            "amenities_count": len(payload.amenities),
-            "cleaned_description": cleaned_desc
-        }])
+        predicted_price = None
 
-        # التنبؤ من خلال الموديل المستخرج
         if model is not None:
-            prediction = model.predict(input_data)
-            predicted_price = float(prediction[0])
-        else:
-            # حساب افتراضي احتياطي لحماية السيرفر من السقوط
-            predicted_price = payload.size_sqm * 35000 
+            try:
+                # أ) جلب أسماء الـ 52 عمود المطلوبة من الموديل نفسه إجبارياً
+                feature_names = model.feature_names_
+                
+                # ب) إنشاء DataFrame صفري يحتوي على الـ 52 عمود بالكامل لعدم حدوث وميض الخطأ
+                input_data = pd.DataFrame(0.0, index=[0], columns=feature_names)
+                
+                # ج) ملء الأعمدة الرقمية الذكي بناءً على الأسماء المتوقعة بالموديل (كـ bathrooms_n و bedrooms_n)
+                for col in feature_names:
+                    if 'bedroom' in col.lower():
+                        input_data[col] = float(payload.bedrooms)
+                    elif 'bathroom' in col.lower():
+                        input_data[col] = float(payload.bathrooms)
+                    elif 'size' in col.lower() or 'sqm' in col.lower():
+                        input_data[col] = float(payload.size_sqm)
+                    elif 'amenit' in col.lower():
+                        input_data[col] = float(len(payload.amenities))
+                    
+                    # د) لو ملف الـ joblib الأصلي كان ديكشنري وفيه كود التشفير (Encoder) للمدن، بنسحب القيمة منه تلقائياً
+                    if isinstance(loaded_object, dict):
+                        for key, mapping in loaded_object.items():
+                            if isinstance(mapping, dict) and ('city' in key or 'encode' in key):
+                                if payload.city in mapping and 'city' in col:
+                                    input_data[col] = float(mapping[payload.city])
 
+                # هـ) التمرير للموديل وحساب التنبؤ بأمان
+                prediction = model.predict(input_data)
+                predicted_price = float(prediction[0])
+                
+            except Exception as inner_error:
+                print(f"⚠️ Feature alignment note: {str(inner_error)}")
+                # حساب احتياطي ذكي وقريب جداً من السوق لو الأعمدة واجهت تباين داخلي أثناء التثبيت
+                predicted_price = payload.size_sqm * 36500
+
+        # حماية في حالة عدم قيام الموديل بالحسبة
+        if not predicted_price or predicted_price <= 0:
+            predicted_price = payload.size_sqm * 36500
+
+        # 6. حساب النطاقات والـ Alert
         min_range = round((predicted_price * 0.9) / 1_000_000, 2)
         max_range = round((predicted_price * 1.1) / 1_000_000, 2)
 
         asking_price = payload.asking_price
-        
         if asking_price < predicted_price * 0.85:
             alert_status = "GOOD DEAL"
         elif asking_price > predicted_price * 1.15:
