@@ -1,6 +1,8 @@
-gui.py  
-train.py  
-api_demo.py  
-audit_inference.py  
-*.csv  
-__pycache__/ 
+gui.py
+train.py
+api_demo.py
+audit_inference.py
+*.csv
+__pycache__/
+.venv/
+.env
