@@ -14,7 +14,7 @@ app = FastAPI(
     version="22.0.0"
 )
 
-# تفعيل الـ CORS عشان الأبليكيشن يقدر يكلم السيرفر بدون قيود
+# تفعيل الـ CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,26 +23,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 2. تحميل موديل الـ Machine Learning (CatBoost Engine v22)
+# 2. تحميل موديل الـ Machine Learning مع معالجة الـ Dictionary ذكياً
 MODEL_PATH = "aqar_hub_v22_model.joblib"
+model = None
 
 try:
     if os.path.exists(MODEL_PATH):
-        model = joblib.load(MODEL_PATH)
-        print(f"✅ Model loaded successfully: {MODEL_PATH}")
+        loaded_object = joblib.load(MODEL_PATH)
+        
+        # إذا كان الملف المرفوع عبارة عن Dictionary يحتوي على الموديل بداخله
+        if isinstance(loaded_object, dict):
+            print(f"ℹ️ Loaded object is a dictionary. Keys found: {list(loaded_object.keys())}")
+            
+            # محاولة استخراج الموديل بأشهر الأسماء الشائعة
+            if 'model' in loaded_object:
+                model = loaded_object['model']
+            elif 'catboost' in loaded_object:
+                model = loaded_object['catboost']
+            else:
+                # البحث التلقائي الذكي عن أي عنصر جوه الـ dict عنده دالة predict
+                for key, value in loaded_object.items():
+                    if hasattr(value, 'predict'):
+                        model = value
+                        print(f"🎯 Automatically extracted model from key: '{key}'")
+                        break
+        else:
+            # لو الموديل متسيف لوحده كـ Object عادي من الأول
+            model = loaded_object
+            
+        if model is not None:
+            print(f"✅ Model loaded successfully: {MODEL_PATH}")
+        else:
+            print("❌ Error: Loaded file is a dictionary but no model object with '.predict' was found inside it.")
     else:
         print(f"⚠️ Warning: {MODEL_PATH} not found. Using dummy predictor for fallback.")
-        model = None
 except Exception as e:
     print(f"❌ Error loading model: {str(e)}")
     model = None
 
 
-# 3. دالة تنظيف المعالجة اللغوية (تطبق على المدخلات فقط وليس المخرجات)
+# 3. دالة تنظيف المعالجة اللغوية (تطبق على المدخلات فقط)
 def clean_arabic_description(text: str) -> str:
     if not text:
         return ""
-    # إزالة الروابط، الإيموجيز، وحروف الإنجليزي لتنظيف النص للموديل
     text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
     text = re.sub(r'[^\w\s\u0600-\u06FF]', ' ', text)
     return " ".join(text.split())
@@ -66,7 +89,6 @@ class ValuationRequest(BaseModel):
 
 @app.get("/health", tags=["System"])
 def health_check():
-    """لفحص حالة السيرفر والتأكد إن الموديل قايم"""
     return {
         "status": "healthy",
         "model_loaded": model is not None,
@@ -76,13 +98,9 @@ def health_check():
 
 @app.post("/api/v1/valuation/analyze", tags=["Valuation"])
 def analyze_property(payload: ValuationRequest):
-    """استقبال بيانات العقار وتحديد هل السعر لقطة، عادل، أو غالي"""
     try:
-        # أ) معالجة وتنظيف الوصف المدخل فقط
         cleaned_desc = clean_arabic_description(payload.description)
         
-        # ب) تحويل البيانات لـ DataFrame متوافق مع الموديل المدرب
-        # (قم بتعديل الأسماء لتطابق الأعمدة الحقيقية للموديل عندك إذا لزم الأمر)
         input_data = pd.DataFrame([{
             "property_type": payload.property_type,
             "governorate": payload.governorate,
@@ -95,19 +113,17 @@ def analyze_property(payload: ValuationRequest):
             "cleaned_description": cleaned_desc
         }])
 
-        # ج) التنبؤ بالسعر العادل من خلال الموديل
+        # التنبؤ من خلال الموديل المستخرج
         if model is not None:
             prediction = model.predict(input_data)
             predicted_price = float(prediction[0])
         else:
-            # حساب افتراضي احتياطي في حال عدم وجود ملف الموديل أثناء التست
+            # حساب افتراضي احتياطي لحماية السيرفر من السقوط
             predicted_price = payload.size_sqm * 35000 
 
-        # د) حساب النطاق السعري المتوقع (+/- 10%) وتحويله للملايين (M)
         min_range = round((predicted_price * 0.9) / 1_000_000, 2)
         max_range = round((predicted_price * 1.1) / 1_000_000, 2)
 
-        # هـ) تطبيق شروط الـ Thresholds لتحديد الـ Alert
         asking_price = payload.asking_price
         
         if asking_price < predicted_price * 0.85:
@@ -117,7 +133,6 @@ def analyze_property(payload: ValuationRequest):
         else:
             alert_status = "FAIR"
 
-        # و) صياغة النص العربي الصافي مع الحفاظ التام على أرقام وحروف النطاق السعري
         response_reason = f"السعر ضمن النطاق المتوقع ({min_range}M-{max_range}M) للعقارات المشابهة."
 
         return {
@@ -129,9 +144,7 @@ def analyze_property(payload: ValuationRequest):
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
-# 6. معالج البورت الديناميكي الخاص بـ Railway لتشغيل السيرفر
 if __name__ == "__main__":
     import uvicorn
-    # لقط البورت المتغير اللي بتفرضه منصة Railway تلقائياً
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
