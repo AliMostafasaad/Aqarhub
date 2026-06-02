@@ -170,10 +170,3 @@ AqarHub/
 
 AqarHub currently combines valuation, market-range estimation, alert classification, confidence scoring, and reason generation in one API workflow. The strongest portfolio angle is the Alert Engine: it turns raw ML predictions into a clear product-style decision that users can act on.
 
-## Future Improvements
-
-- Add screenshots for the API docs, valuation request, alert output, and model visualizations.
-- Move large artifacts into organized `models/`, `data/`, and `notebooks/` folders after updating paths safely.
-- Add automated tests for the FastAPI endpoint and alert engine.
-- Add a GitHub Action for basic Python checks.
-- Improve the deployed API to return full confidence and reason output from `alert_engine.py`.
