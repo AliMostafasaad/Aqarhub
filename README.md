@@ -1,6 +1,6 @@
 # Aqar Hub 🏠
 
-# AqarHub
+
 
 ## Overview
 
