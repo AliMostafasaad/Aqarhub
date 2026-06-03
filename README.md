@@ -165,29 +165,65 @@ AqarHub/
 |-- requirements.txt                # Python dependencies
 `-- README.md
 ```
-
-## Results
-
-AqarHub currently combines valuation, market-range estimation, alert classification, confidence scoring, and reason generation in one API workflow. The strongest portfolio angle is the Alert Engine: it turns raw ML predictions into a clear product-style decision that users can act on.
-## work Flow
 ## Project Workflow
 
 ```mermaid
 flowchart LR
-    A["Real Estate Listings"] --> B["Data Cleaning"]
-    B --> C["Feature Engineering"]
-    C --> D["CatBoost Model Training"]
-    D --> E["Model Evaluation"]
-    E --> F["Saved Model Bundle"]
-    F --> G["FastAPI Backend"]
-    G --> H["Price Prediction"]
-    H --> I["Alert Engine"]
-    I --> J{"Final Decision"}
+    A["Raw Real Estate Listings"] --> B["Data Cleaning & Validation"]
+    B --> C["Property Type Normalization"]
+    C --> D["Feature Engineering"]
 
-    J --> K["UNDERPRICED"]
-    J --> L["FAIR"]
-    J --> M["OVERPRICED"]
+    D --> D1["Location Features"]
+    D --> D2["Property Features"]
+    D --> D3["Text / NLP Features"]
+    D --> D4["Price-per-sqm Benchmarks"]
 
-    I --> N["Confidence Score"]
-    I --> O["Reasons / Explanation"]
+    D1 --> E["Training Dataset"]
+    D2 --> E
+    D3 --> E
+    D4 --> E
+
+    E --> F["CatBoost Model Training"]
+    F --> G["Model Evaluation"]
+    G --> G1["Train R2: 0.8327"]
+    G --> G2["Test R2: 0.8296"]
+    G --> G3["Gap: 0.0032"]
+    G --> G4["MAPE: 20.29%"]
+
+    G --> H["Saved Model Bundle"]
+    H --> I["FastAPI Backend"]
+    I --> J["User Property Input"]
+    J --> K["Price Prediction"]
+    K --> L["Market Range Estimation"]
+    L --> M["Alert Engine"]
+
+    M --> N["Confidence Scoring"]
+    M --> O["Reason Generation"]
+    M --> P{"Final Decision"}
+
+    P --> Q["UNDERPRICED"]
+    P --> R["FAIR"]
+    P --> S["OVERPRICED"]
+
+    N --> T["API Response"]
+    O --> T
+    Q --> T
+    R --> T
+    S --> T
+
+    classDef data fill:#1f2937,stroke:#60a5fa,color:#ffffff;
+    classDef model fill:#111827,stroke:#34d399,color:#ffffff;
+    classDef api fill:#1e1b4b,stroke:#a78bfa,color:#ffffff;
+    classDef decision fill:#3f1d1d,stroke:#f87171,color:#ffffff;
+    classDef metric fill:#172554,stroke:#38bdf8,color:#ffffff;
+
+    class A,B,C,D,D1,D2,D3,D4,E data;
+    class F,G,H model;
+    class I,J,K,L,M,N,O,T api;
+    class P,Q,R,S decision;
+    class G1,G2,G3,G4 metric;
 ```
+
+## Results
+
+AqarHub currently combines valuation, market-range estimation, alert classification, confidence scoring, and reason generation in one API workflow. The strongest portfolio angle is the Alert Engine: it turns raw ML predictions into a clear product-style decision that users can act on.
