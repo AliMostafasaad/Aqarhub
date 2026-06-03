@@ -166,63 +166,47 @@ AqarHub/
 `-- README.md
 ```
 ## Project Workflow
+flowchart TD
+    %% ==================== TRAINING PIPELINE ====================
+    subgraph TRAIN["🔧 Training Pipeline (train.py)"]
+        direction TB
+        A[📄 Real Estate Listings] --> B[🧹 Data Cleaning]
+        B --> C[🔨 Feature Engineering]
+        C --> D[🤖 CatBoost Model Training]
+        D --> E[📊 Model Evaluation]
+        E --> F[💾 Saved Model Bundle]
+    end
 
-```mermaid
-flowchart LR
-    A["Raw Real Estate Listings"] --> B["Data Cleaning & Validation"]
-    B --> C["Property Type Normalization"]
-    C --> D["Feature Engineering"]
+    %% ==================== INFERENCE PIPELINE ====================
+    subgraph INFER["🚀 Inference Pipeline (main.py / gui.py)"]
+        direction TB
+        G[🌐 FastAPI Valuation API] --> H[🔮 Price Prediction]
+        H --> H1[P10 / P50 / P90]
+        H1 --> I{💡 Analysis Mode}
+        I -->|Sale| S1[make_decision]
+        I -->|Rental| R1[rental_integration.py]
+        S1 --> S2[Payment Adjustment]
+        S2 --> J1[📢 Final Decision]
+        R1 --> J1
+    end
 
-    D --> D1["Location Features"]
-    D --> D2["Property Features"]
-    D --> D3["Text / NLP Features"]
-    D --> D4["Price-per-sqm Benchmarks"]
+    %% ==================== DECISION OUTPUTS ====================
+    subgraph OUT["🎯 Decision Outputs"]
+        J1 --> K[🟢 UNDERPRICED]
+        J1 --> L[🟠 FAIR]
+        J1 --> M[🔴 OVERPRICED]
+    end
 
-    D1 --> E["Training Dataset"]
-    D2 --> E
-    D3 --> E
-    D4 --> E
+    %% ==================== RENTAL LAYER ====================
+    subgraph RENTAL["🏠 Rental Intelligence"]
+        R1 --> R2[rental_estimator.py]
+        R2 --> R3[rental_premium_engine.py]
+        R3 --> R4[rental_alert_engine.py]
+        R4 --> R5[rental_reason_builder.py]
+    end
 
-    E --> F["CatBoost Model Training"]
-    F --> G["Model Evaluation"]
-    G --> G1["Train R2: 0.8327"]
-    G --> G2["Test R2: 0.8296"]
-    G --> G3["Gap: 0.0032"]
-    G --> G4["MAPE: 20.29%"]
+    F --> G
 
-    G --> H["Saved Model Bundle"]
-    H --> I["FastAPI Backend"]
-    I --> J["User Property Input"]
-    J --> K["Price Prediction"]
-    K --> L["Market Range Estimation"]
-    L --> M["Alert Engine"]
-
-    M --> N["Confidence Scoring"]
-    M --> O["Reason Generation"]
-    M --> P{"Final Decision"}
-
-    P --> Q["UNDERPRICED"]
-    P --> R["FAIR"]
-    P --> S["OVERPRICED"]
-
-    N --> T["API Response"]
-    O --> T
-    Q --> T
-    R --> T
-    S --> T
-
-    classDef data fill:#1f2937,stroke:#60a5fa,color:#ffffff;
-    classDef model fill:#111827,stroke:#34d399,color:#ffffff;
-    classDef api fill:#1e1b4b,stroke:#a78bfa,color:#ffffff;
-    classDef decision fill:#3f1d1d,stroke:#f87171,color:#ffffff;
-    classDef metric fill:#172554,stroke:#38bdf8,color:#ffffff;
-
-    class A,B,C,D,D1,D2,D3,D4,E data;
-    class F,G,H model;
-    class I,J,K,L,M,N,O,T api;
-    class P,Q,R,S decision;
-    class G1,G2,G3,G4 metric;
-```
 
 ## Results
 
