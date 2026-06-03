@@ -166,47 +166,24 @@ AqarHub/
 `-- README.md
 ```
 ## Project Workflow
+
+AqarHub follows an end-to-end machine learning workflow that starts from real estate listing data and ends with an API decision signal for the user.
+
+```mermaid
 flowchart TD
-    %% ==================== TRAINING PIPELINE ====================
-    subgraph TRAIN["🔧 Training Pipeline (train.py)"]
-        direction TB
-        A[📄 Real Estate Listings] --> B[🧹 Data Cleaning]
-        B --> C[🔨 Feature Engineering]
-        C --> D[🤖 CatBoost Model Training]
-        D --> E[📊 Model Evaluation]
-        E --> F[💾 Saved Model Bundle]
-    end
+    A[Real Estate Listings] --> B[Data Cleaning]
+    B --> C[Feature Engineering]
+    C --> D[Model Training]
+    D --> E[Model Evaluation]
+    E --> F[Saved Model Bundle]
+    F --> G[FastAPI Valuation API]
+    G --> H[Price Prediction]
+    H --> I[Alert Engine]
+    I --> J[Final Decision Output]
 
-    %% ==================== INFERENCE PIPELINE ====================
-    subgraph INFER["🚀 Inference Pipeline (main.py / gui.py)"]
-        direction TB
-        G[🌐 FastAPI Valuation API] --> H[🔮 Price Prediction]
-        H --> H1[P10 / P50 / P90]
-        H1 --> I{💡 Analysis Mode}
-        I -->|Sale| S1[make_decision]
-        I -->|Rental| R1[rental_integration.py]
-        S1 --> S2[Payment Adjustment]
-        S2 --> J1[📢 Final Decision]
-        R1 --> J1
-    end
-
-    %% ==================== DECISION OUTPUTS ====================
-    subgraph OUT["🎯 Decision Outputs"]
-        J1 --> K[🟢 UNDERPRICED]
-        J1 --> L[🟠 FAIR]
-        J1 --> M[🔴 OVERPRICED]
-    end
-
-    %% ==================== RENTAL LAYER ====================
-    subgraph RENTAL["🏠 Rental Intelligence"]
-        R1 --> R2[rental_estimator.py]
-        R2 --> R3[rental_premium_engine.py]
-        R3 --> R4[rental_alert_engine.py]
-        R4 --> R5[rental_reason_builder.py]
-    end
-
-    F --> G
-
+    J --> K[UNDERPRICED]
+    J --> L[FAIR]
+    J --> M[OVERPRICED]
 
 ## Results
 
