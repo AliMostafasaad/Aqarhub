@@ -169,4 +169,25 @@ AqarHub/
 ## Results
 
 AqarHub currently combines valuation, market-range estimation, alert classification, confidence scoring, and reason generation in one API workflow. The strongest portfolio angle is the Alert Engine: it turns raw ML predictions into a clear product-style decision that users can act on.
+## work Flow
+## Project Workflow
 
+```mermaid
+flowchart LR
+    A["Real Estate Listings"] --> B["Data Cleaning"]
+    B --> C["Feature Engineering"]
+    C --> D["CatBoost Model Training"]
+    D --> E["Model Evaluation"]
+    E --> F["Saved Model Bundle"]
+    F --> G["FastAPI Backend"]
+    G --> H["Price Prediction"]
+    H --> I["Alert Engine"]
+    I --> J{"Final Decision"}
+
+    J --> K["UNDERPRICED"]
+    J --> L["FAIR"]
+    J --> M["OVERPRICED"]
+
+    I --> N["Confidence Score"]
+    I --> O["Reasons / Explanation"]
+```
