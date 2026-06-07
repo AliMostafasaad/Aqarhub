@@ -171,19 +171,25 @@ AqarHub follows an end-to-end machine learning workflow that starts from real es
 
 ```mermaid
 flowchart TD
-    A[Real Estate Listings] --> B[Data Cleaning]
-    B --> C[Feature Engineering]
-    C --> D[Model Training]
-    D --> E[Model Evaluation]
-    E --> F[Saved Model Bundle]
-    F --> G[FastAPI Valuation API]
-    G --> H[Price Prediction]
-    H --> I[Alert Engine]
-    I --> J[Final Decision Output]
+    A["Raw Real Estate Listings"] --> B["Data Cleaning"]
+    B --> C["Feature Engineering"]
+    C --> D["Model Training"]
+    D --> E["Model Evaluation"]
+    E --> F["Saved Model Bundle"]
+    F --> G["FastAPI Backend"]
+    G --> H["Price Prediction"]
+    H --> I["Alert Engine"]
+    I --> J{"Final Decision"}
 
-    J --> K[UNDERPRICED]
-    J --> L[FAIR]
-    J --> M[OVERPRICED]
+    J --> K["UNDERPRICED"]
+    J --> L["FAIR"]
+    J --> M["OVERPRICED"]
+
+    I --> N["Confidence Score"]
+    I --> O["Reasons / Explanation"]
+```
+
+## Results
 
 ## Results
 
